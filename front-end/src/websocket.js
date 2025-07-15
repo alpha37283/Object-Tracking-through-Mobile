@@ -1,4 +1,7 @@
-export const socket = new WebSocket(`ws://192.168.100.216:8765`);
+//export const socket = new WebSocket(`ws://284bcbe8d7e5.ngrok-free.app`);
+
+
+export const socket = new WebSocket("wss://284bcbe8d7e5.ngrok-free.app/ws");
 
 
 
