@@ -1,4 +1,6 @@
-export const socket = new WebSocket(`wss://${window.location.host}/ws`);
+export const socket = new WebSocket(`ws://192.168.100.216:8765`);
+
+
 
 socket.onopen = () => {
   console.log("WebSocket connected ✅");
