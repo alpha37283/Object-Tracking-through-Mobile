@@ -9,13 +9,13 @@ export default defineConfig({
     cors: {
       origin: [
         'http://localhost:5173',
-        'https://b7be4e1f8a74.ngrok-free.app'
+        'https://72da959561a7.ngrok-free.app'
       ],
       credentials: true
     },
     allowedHosts: [
       'localhost',
-      'b7be4e1f8a74.ngrok-free.app'
+      '72da959561a7.ngrok-free.app'
     ]
   }
 })

@@ -1,12 +1,8 @@
 let ws;
 
 export function connectWebSocket(role, onMessage) {
-  // Use ngrok domain if available, otherwise fallback to window.location.hostname
-  const ngrokHost = 'b7be4e1f8a74.ngrok-free.app';
-  const isNgrok = window.location.hostname === ngrokHost;
-  const wsProtocol = isNgrok ? 'wss' : 'ws';
-  const wsHost = isNgrok ? ngrokHost : window.location.hostname;
-  ws = new WebSocket(`${wsProtocol}://${wsHost}:8765`);
+  // Always use new ngrok backend for WebSocket
+  ws = new WebSocket('wss://72da959561a7.ngrok-free.app:8765');
   ws.onopen = () => {
     ws.send(role); // Identify as "mobile" or "laptop"
     console.log(`${role} WebSocket connected`);
