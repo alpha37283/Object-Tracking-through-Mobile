@@ -57,6 +57,9 @@ dependencies {
 
     // ✅ OkHttp for WebSocket
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.squareup.okio:okio:3.9.0")
+
+
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

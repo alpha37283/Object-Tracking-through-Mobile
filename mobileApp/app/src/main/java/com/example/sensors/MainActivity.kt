@@ -27,6 +27,13 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
+import android.widget.Toast
+import android.util.Log
+
 
 
 class MainActivity : ComponentActivity(), SensorEventListener {
@@ -137,8 +144,14 @@ fun CameraScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
-    // 🔌 Initialize and connect WebSocket
-    val socketClient = remember { WebSocketClient().apply { connect("ws://192.168.1.112:8765") } }
+    // ✅ Improved WebSocketClient init
+    val socketClient by remember { mutableStateOf(WebSocketClient()) }
+
+    LaunchedEffect(Unit) {
+        android.util.Log.d("CameraScreen", "📡 Connecting to WebSocket…")
+        socketClient.connect("ws://192.168.1.112:8765/ws")
+        android.widget.Toast.makeText(context, "Connecting to WebSocket", android.widget.Toast.LENGTH_SHORT).show()
+    }
 
     AndroidView(
         factory = {

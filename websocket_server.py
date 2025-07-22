@@ -1,4 +1,3 @@
-# websocket_server.py
 import asyncio
 import websockets
 import json
@@ -7,17 +6,17 @@ clients = set()
 frame_callback = None
 
 async def handler(websocket):
-    print("✅ Laptop: Android connected")
+    print("Laptop: Android connected")
     clients.add(websocket)
     try:
         async for message in websocket:
             data = json.loads(message)
             if data["type"] == "frame" and frame_callback:
-                frame_callback(data["data"])  # Base64 JPEG
+                frame_callback(data["data"]) # Call the frame callback with the received frame data
             elif data["type"] == "sensor":
-                print("📡 Sensor:", data["values"])
+                print("Sensor:", data["values"])
     except websockets.ConnectionClosed:
-        print("❌ Android disconnected")
+        print("Android disconnected")
     finally:
         clients.remove(websocket)
 

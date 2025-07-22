@@ -36,36 +36,26 @@ async def detect_image(file: UploadFile = File(...)):
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    """
-    Receives JPEG-encoded frames from the mobile app over WebSocket.
-    Sends back detection/tracking metadata as JSON.
-    """
     await websocket.accept()
-    print("✅ WebSocket connection established")
+    print("WebSocket connection accepted")
 
-    try:
-        while True:
-            # Receive JPEG bytes
+    while True:
+        try:
             data = await websocket.receive_bytes()
+
             np_arr = np.frombuffer(data, np.uint8)
             frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+            frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)  
 
-            if frame is None:
-                print("⚠️ Received empty frame")
-                continue
+            if frame is not None:
+                print(f"Frame shape: {frame.shape}")
+                # Optionally show the frame in OpenCV window
+                cv2.imshow("Mobile Stream", frame)
+                if cv2.waitKey(1) & 0xFF == ord("q"):
+                    break
 
-            # Run tracking
-            tracked_frame, metadata = start_tracking(frame, model)
+        except Exception as e:
+            print("Error in WebSocket:", e)
+            break
 
-            # Optional: You can visualize this frame in a local OpenCV window
-            # cv2.imshow("Tracking", tracked_frame)
-            # if cv2.waitKey(1) == ord('q'):
-            #     break
-
-            # Send only metadata back to mobile
-            await websocket.send_json(metadata)
-
-    except Exception as e:
-        print("❌ WebSocket disconnected or error occurred:", e)
-    finally:
-        print("🛑 WebSocket connection closed")
+    cv2.destroyAllWindows()

@@ -2,12 +2,13 @@ package com.example.sensors
 
 import android.util.Log
 import okhttp3.*
-import okio.ByteString
 import java.util.concurrent.TimeUnit
+import okio.ByteString
+
 
 class WebSocketClient {
 
-    private lateinit var webSocket: WebSocket
+    private var webSocket: WebSocket? = null
     private val client = OkHttpClient.Builder()
         .readTimeout(0, TimeUnit.MILLISECONDS)
         .build()
@@ -16,26 +17,23 @@ class WebSocketClient {
         val request = Request.Builder().url(serverUrl).build()
         webSocket = client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(ws: WebSocket, response: Response) {
-                Log.d("WebSocket", "Connected ✅")
-            }
-
-            override fun onMessage(ws: WebSocket, text: String) {
-                Log.d("WebSocket", "Received message: $text")
+                Log.d("WebSocket", "✅ Connected to $serverUrl")
             }
 
             override fun onFailure(ws: WebSocket, t: Throwable, response: Response?) {
-                Log.e("WebSocket", "Error: ${t.localizedMessage}")
+                Log.e("WebSocket", "❌ WebSocket Error: ${t.localizedMessage}", t)
             }
 
             override fun onClosed(ws: WebSocket, code: Int, reason: String) {
-                Log.d("WebSocket", "Closed: $reason")
+                Log.d("WebSocket", "🔌 Disconnected: $reason")
             }
         })
     }
 
-    fun send(base64Image: String) {
-        if (::webSocket.isInitialized) {
-            webSocket.send("{\"type\": \"frame\", \"data\": \"$base64Image\"}")
-        }
+    fun sendBytes(data: ByteArray) {
+        webSocket?.let {
+            it.send(ByteString.of(*data))
+            Log.d("WebSocket", "📤 Sent ${data.size} bytes")
+        } ?: Log.w("WebSocket", "⚠️ Tried to send but socket is null")
     }
 }
