@@ -25,6 +25,9 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.activity.compose.BackHandler
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.ImageProxy
+
 
 class MainActivity : ComponentActivity(), SensorEventListener {
 
@@ -134,29 +137,47 @@ fun CameraScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
+    // 🔌 Initialize and connect WebSocket
+    val socketClient = remember { WebSocketClient().apply { connect("ws://192.168.1.112:8765") } }
+
     AndroidView(
         factory = {
-            PreviewView(context).apply {
-                val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
-                cameraProviderFuture.addListener({
-                    val cameraProvider = cameraProviderFuture.get()
-                    val preview = Preview.Builder().build()
-                    val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+            val previewView = PreviewView(context)
 
-                    preview.setSurfaceProvider(this.surfaceProvider)
+            val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
+            cameraProviderFuture.addListener({
+                val cameraProvider = cameraProviderFuture.get()
 
-                    try {
-                        cameraProvider.unbindAll()
-                        cameraProvider.bindToLifecycle(
-                            lifecycleOwner,
-                            cameraSelector,
-                            preview
+                val preview = Preview.Builder().build()
+                preview.setSurfaceProvider(previewView.surfaceProvider)
+
+                val imageAnalysis = ImageAnalysis.Builder()
+                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                    .build()
+                    .also {
+                        it.setAnalyzer(
+                            ContextCompat.getMainExecutor(context),
+                            CameraFrameAnalyzer(socketClient)
                         )
-                    } catch (e: Exception) {
-                        e.printStackTrace()
                     }
-                }, ContextCompat.getMainExecutor(context))
-            }
+
+                val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+
+                try {
+                    cameraProvider.unbindAll()
+                    cameraProvider.bindToLifecycle(
+                        lifecycleOwner,
+                        cameraSelector,
+                        preview,
+                        imageAnalysis // 👈 stream frames to WebSocket
+                    )
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+
+            }, ContextCompat.getMainExecutor(context))
+
+            previewView
         },
         modifier = Modifier.fillMaxSize()
     )
