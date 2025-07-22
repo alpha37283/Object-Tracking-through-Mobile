@@ -144,56 +144,73 @@ fun CameraScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
-    // ✅ Improved WebSocketClient init
     val socketClient by remember { mutableStateOf(WebSocketClient()) }
+
+    // Step 1: Create overlay reference
+    val overlayRef = remember { mutableStateOf<DetectionOverlay?>(null) }
 
     LaunchedEffect(Unit) {
         android.util.Log.d("CameraScreen", "📡 Connecting to WebSocket…")
         socketClient.connect("ws://192.168.1.112:8765/ws")
-        android.widget.Toast.makeText(context, "Connecting to WebSocket", android.widget.Toast.LENGTH_SHORT).show()
+        overlayRef.value?.let { socketClient.attachOverlay(it) }
+        Toast.makeText(context, "Connecting to WebSocket", Toast.LENGTH_SHORT).show()
     }
 
-    AndroidView(
-        factory = {
-            val previewView = PreviewView(context)
+    // Step 2: Use Box to layer camera and overlay
+    Box(modifier = Modifier.fillMaxSize()) {
 
-            val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
-            cameraProviderFuture.addListener({
-                val cameraProvider = cameraProviderFuture.get()
+        AndroidView(
+            factory = {
+                val previewView = PreviewView(context)
 
-                val preview = Preview.Builder().build()
-                preview.setSurfaceProvider(previewView.surfaceProvider)
+                val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
+                cameraProviderFuture.addListener({
+                    val cameraProvider = cameraProviderFuture.get()
 
-                val imageAnalysis = ImageAnalysis.Builder()
-                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                    .build()
-                    .also {
-                        it.setAnalyzer(
-                            ContextCompat.getMainExecutor(context),
-                            CameraFrameAnalyzer(socketClient)
+                    val preview = Preview.Builder().build()
+                    preview.setSurfaceProvider(previewView.surfaceProvider)
+
+                    val imageAnalysis = ImageAnalysis.Builder()
+                        .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                        .build()
+                        .also {
+                            it.setAnalyzer(
+                                ContextCompat.getMainExecutor(context),
+                                CameraFrameAnalyzer(socketClient)
+                            )
+                        }
+
+                    val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+
+                    try {
+                        cameraProvider.unbindAll()
+                        cameraProvider.bindToLifecycle(
+                            lifecycleOwner,
+                            cameraSelector,
+                            preview,
+                            imageAnalysis
                         )
+                    } catch (e: Exception) {
+                        e.printStackTrace()
                     }
 
-                val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+                }, ContextCompat.getMainExecutor(context))
 
-                try {
-                    cameraProvider.unbindAll()
-                    cameraProvider.bindToLifecycle(
-                        lifecycleOwner,
-                        cameraSelector,
-                        preview,
-                        imageAnalysis // 👈 stream frames to WebSocket
-                    )
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
+                previewView
+            },
+            modifier = Modifier.fillMaxSize()
+        )
 
-            }, ContextCompat.getMainExecutor(context))
-
-            previewView
-        },
-        modifier = Modifier.fillMaxSize()
-    )
+        // Detection Overlay Layer
+        AndroidView(
+            factory = {
+                val overlay = DetectionOverlay(context, null)
+                overlayRef.value = overlay
+                overlay
+            },
+            modifier = Modifier.fillMaxSize()
+        )
+    }
 
     BackHandler(onBack = onBack)
 }

@@ -1,55 +1,59 @@
-# main.py
-from fastapi import FastAPI, File, UploadFile, WebSocket
-from fastapi.responses import HTMLResponse
-import numpy as np
+import json
 import cv2
-from detection import run_detection
-from utils import draw_boxes
+import numpy as np
+from fastapi import FastAPI, WebSocket
+from fastapi.middleware.cors import CORSMiddleware
+import uvicorn
+
+from utils import decode_image, detect_objects, draw_boxes
 
 app = FastAPI()
 
-@app.get("/")
-def homepage():
-    return HTMLResponse("<h2>Mobile Camera Feed Server is Running</h2>")
-
-@app.post("/detect/")
-async def detect_image(file: UploadFile = File(...)):
-    contents = await file.read()
-    np_arr = np.frombuffer(contents, np.uint8)
-    frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-
-    detections = run_detection(frame)
-    return {"detections": detections}
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # For dev only
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
-    print("WebSocket connection accepted")
-
-    window_name = "Mobile Stream"
-    cv2.namedWindow(window_name)
+    print("✅ WebSocket connected")
 
     while True:
         try:
             data = await websocket.receive_bytes()
 
-            np_arr = np.frombuffer(data, np.uint8)
-            frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+            # Decode JPEG to OpenCV frame
+            frame = decode_image(data)
+            if frame is None:
+                continue
+
+            # Rotate the frame
             frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
 
-            if frame is not None:
-                # Run detection and draw bounding boxes
-                detections = run_detection(frame)
-                frame_with_boxes = draw_boxes(frame, detections)
+            # Detect objects
+            detections = detect_objects(frame)
 
-                # Show annotated frame
-                display_frame = cv2.resize(frame_with_boxes, (960, 720)) 
-                cv2.imshow(window_name, frame_with_boxes)
-                if cv2.waitKey(1) & 0xFF == ord("q"):
-                    break
+            # Draw bounding boxes on the frame
+            frame = draw_boxes(frame, detections)
+
+            # Display the annotated frame (non-blocking)
+            cv2.imshow("YOLOv8 Detection", frame)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+
+            # Send back detections as JSON
+            await websocket.send_text(json.dumps({"detections": detections}))
 
         except Exception as e:
-            print("❌ Error in WebSocket:", e)
+            print(f"❌ Error: {e}")
             break
 
     cv2.destroyAllWindows()
+
+
+if __name__ == "__main__":
+    uvicorn.run("main:app", host="0.0.0.0", port=8765)

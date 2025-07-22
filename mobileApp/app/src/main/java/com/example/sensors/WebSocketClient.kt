@@ -9,6 +9,12 @@ import okio.ByteString
 class WebSocketClient {
 
     private var webSocket: WebSocket? = null
+    private var overlay: DetectionOverlay? = null
+
+    fun attachOverlay(view: DetectionOverlay) {
+        overlay = view
+    }
+
     private val client = OkHttpClient.Builder()
         .readTimeout(0, TimeUnit.MILLISECONDS)
         .build()
@@ -18,6 +24,13 @@ class WebSocketClient {
         webSocket = client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(ws: WebSocket, response: Response) {
                 Log.d("WebSocket", "✅ Connected to $serverUrl")
+            }
+
+            override fun onMessage(ws: WebSocket, text: String) {
+                Log.d("WebSocket", "📩 Received: $text")
+                overlay?.post {
+                    overlay?.updateDetections(text)
+                }
             }
 
             override fun onFailure(ws: WebSocket, t: Throwable, response: Response?) {

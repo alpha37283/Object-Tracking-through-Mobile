@@ -1,43 +1,50 @@
 # utils.py
 import cv2
 import random
+import numpy as np
+from ultralytics import YOLO
 
-# COCO class names (for YOLOv8)
-COCO_CLASSES = [
-    "person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck",
-    "boat", "traffic light", "fire hydrant", "stop sign", "parking meter", "bench",
-    "bird", "cat", "dog", "horse", "sheep", "cow", "elephant", "bear", "zebra",
-    "giraffe", "backpack", "umbrella", "handbag", "tie", "suitcase", "frisbee",
-    "skis", "snowboard", "sports ball", "kite", "baseball bat", "baseball glove",
-    "skateboard", "surfboard", "tennis racket", "bottle", "wine glass", "cup",
-    "fork", "knife", "spoon", "bowl", "banana", "apple", "sandwich", "orange",
-    "broccoli", "carrot", "hot dog", "pizza", "donut", "cake", "chair", "couch",
-    "potted plant", "bed", "dining table", "toilet", "tv", "laptop", "mouse",
-    "remote", "keyboard", "cell phone", "microwave", "oven", "toaster", "sink",
-    "refrigerator", "book", "clock", "vase", "scissors", "teddy bear", "hair drier",
-    "toothbrush"
-]
+# Load YOLOv8 model
+model = YOLO("yolov8n.pt")  # You can change to yolov8s.pt etc.
 
-# Generate a color for each class index
-CLASS_COLORS = {i: (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)) for i in range(len(COCO_CLASSES))}
+# Decode JPEG bytes to OpenCV image
+def decode_image(jpeg_bytes: bytes):
+    nparr = np.frombuffer(jpeg_bytes, np.uint8)
+    return cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
+# Perform YOLO object detection
+def detect_objects(image):
+    results = model(image)[0]
+    detections = []
+    for box in results.boxes:
+        x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
+        conf = float(box.conf[0])
+        cls_id = int(box.cls[0])
+        class_name = model.names[cls_id]
+        detections.append({
+            "class": class_name,
+            "confidence": conf,
+            "bbox": [x1, y1, x2, y2]
+        })
+    return detections
+
+# Draw bounding boxes with labels
 def draw_boxes(frame, detections):
     for det in detections:
         x1, y1, x2, y2 = det["bbox"]
-        conf = det["confidence"]
-        cls = det["class"]
+        label = f'{det["class"]} {int(det["confidence"] * 100)}%'
 
-        label = f"{COCO_CLASSES[cls]} {conf:.2f}"
-        color = CLASS_COLORS.get(cls, (0, 255, 0))
+        # Color based on class name hash
+        color = tuple(int(x) for x in np.random.default_rng(hash(det["class"]) % (2**32)).integers(0, 255, size=3))
 
         # Draw bounding box
         cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
 
-        # Label background
+        # Draw label background
         (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 1)
         cv2.rectangle(frame, (x1, y1 - th - 4), (x1 + tw, y1), color, -1)
 
-        # Label text
+        # Draw label text
         cv2.putText(frame, label, (x1, y1 - 4),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
 
