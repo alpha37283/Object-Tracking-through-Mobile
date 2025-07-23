@@ -34,6 +34,11 @@ async def websocket_endpoint(websocket: WebSocket):
             # Rotate the frame
             frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
 
+            # frame shape 
+            print(f"Frame shape: {frame.shape}")  # Debugging line
+
+            #frame = cv2.resize(frame, (1080, 2400)) 
+
             # Detect objects
             detections = detect_objects(frame)
 

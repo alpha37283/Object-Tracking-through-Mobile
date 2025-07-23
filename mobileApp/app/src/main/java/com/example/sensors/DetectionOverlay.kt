@@ -29,15 +29,31 @@ class DetectionOverlay(context: Context, attrs: AttributeSet?) : View(context, a
         try {
             val json = JSONObject(jsonString)
             val detections: JSONArray = json.getJSONArray("detections")
+
+            // Input frame size from Android → Python → back to Android
+            val inputWidth = 640f
+            val inputHeight = 480f
+
+            // Output view size (this overlay's actual size)
+            val scaleX = width / inputWidth
+            val scaleY = height / inputHeight
+
             for (i in 0 until detections.length()) {
                 val obj = detections.getJSONObject(i)
                 val bbox = obj.getJSONArray("bbox")
+
+                // Scale each coordinate
+                val left = (bbox.getInt(0) * scaleX).toInt()
+                val top = (bbox.getInt(1) * scaleY).toInt()
+                val right = (bbox.getInt(2) * scaleX).toInt()
+                val bottom = (bbox.getInt(3) * scaleY).toInt()
+
                 newBoxes.add(
                     DetectionBox(
-                        left = bbox.getInt(0),
-                        top = bbox.getInt(1),
-                        right = bbox.getInt(2),
-                        bottom = bbox.getInt(3),
+                        left = left,
+                        top = top,
+                        right = right,
+                        bottom = bottom,
                         label = "${obj.getString("class")} ${(obj.getDouble("confidence") * 100).toInt()}%"
                     )
                 )
@@ -49,6 +65,7 @@ class DetectionOverlay(context: Context, attrs: AttributeSet?) : View(context, a
         boxes = newBoxes
         invalidate()
     }
+
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)

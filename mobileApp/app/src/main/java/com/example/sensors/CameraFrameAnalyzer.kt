@@ -17,20 +17,24 @@ class CameraFrameAnalyzer(private val socketClient: WebSocketClient) : ImageAnal
             return
         }
 
-        val bitmap = image.toBitmap() ?: run {
+        val originalBitmap = image.toBitmap() ?: run {
             imageProxy.close()
             return
         }
 
+        // ✅ Resize to 640x480 before sending
+        val resizedBitmap = Bitmap.createScaledBitmap(originalBitmap, 640, 480, true)
+
         val outputStream = ByteArrayOutputStream()
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 60, outputStream)
+        resizedBitmap.compress(Bitmap.CompressFormat.JPEG, 60, outputStream)
         val jpegBytes = outputStream.toByteArray()
 
-        // Send raw JPEG bytes through WebSocket
+        // Send resized JPEG bytes
         socketClient.sendBytes(jpegBytes)
 
         imageProxy.close()
     }
+
 
     private fun Image.toBitmap(): Bitmap? {
         if (format != ImageFormat.YUV_420_888) return null
