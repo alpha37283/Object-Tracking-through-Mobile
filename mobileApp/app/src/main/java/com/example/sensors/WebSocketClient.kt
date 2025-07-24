@@ -23,22 +23,22 @@ class WebSocketClient {
         val request = Request.Builder().url(serverUrl).build()
         webSocket = client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(ws: WebSocket, response: Response) {
-                Log.d("WebSocket", "✅ Connected to $serverUrl")
+                Log.d("WebSocket", "Connected to $serverUrl")
             }
 
             override fun onMessage(ws: WebSocket, text: String) {
-                Log.d("WebSocket", "📩 Received: $text")
+                Log.d("WebSocket", "Received: $text")
                 overlay?.post {
                     overlay?.updateDetections(text)
                 }
             }
 
             override fun onFailure(ws: WebSocket, t: Throwable, response: Response?) {
-                Log.e("WebSocket", "❌ WebSocket Error: ${t.localizedMessage}", t)
+                Log.e("WebSocket", "WebSocket Error: ${t.localizedMessage}", t)
             }
 
             override fun onClosed(ws: WebSocket, code: Int, reason: String) {
-                Log.d("WebSocket", "🔌 Disconnected: $reason")
+                Log.d("WebSocket", "Disconnected: $reason")
             }
         })
     }

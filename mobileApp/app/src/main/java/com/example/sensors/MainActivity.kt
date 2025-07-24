@@ -150,7 +150,7 @@ fun CameraScreen(onBack: () -> Unit) {
     val overlayRef = remember { mutableStateOf<DetectionOverlay?>(null) }
 
     LaunchedEffect(Unit) {
-        android.util.Log.d("CameraScreen", "📡 Connecting to WebSocket…")
+        android.util.Log.d("CameraScreen", "Connecting to WebSocket…")
         socketClient.connect("ws://192.168.1.112:8765/ws")
         overlayRef.value?.let { socketClient.attachOverlay(it) }
         Toast.makeText(context, "Connecting to WebSocket", Toast.LENGTH_SHORT).show()
